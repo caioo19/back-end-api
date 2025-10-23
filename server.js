@@ -183,89 +183,105 @@ app.put("/questoes/:id", async (req, res) => {
 
 // === CLIENTES ===
 
-// GET - Listar todos os clientes
+// GET todos os clientes
 app.get("/clientes", async (req, res) => {
   try {
-    const result = await pool.query("SELECT * FROM Clientes ORDER BY id ASC");
-    res.json(result.rows);
-  } catch (error) {
-    console.error("Erro ao buscar clientes:", error);
-    res.status(500).json({ error: "Erro ao buscar clientes" });
+    const db = conectarBD();
+    const resultado = await db.query("SELECT * FROM Clientes ORDER BY id ASC");
+    res.json(resultado.rows);
+  } catch (e) {
+    console.error("Erro ao buscar clientes:", e);
+    res.status(500).json({ erro: "Erro interno ao buscar clientes" });
   }
 });
 
-// GET - Buscar cliente por ID
+// GET cliente por ID
 app.get("/clientes/:id", async (req, res) => {
-  const { id } = req.params;
   try {
-    const result = await pool.query("SELECT * FROM Clientes WHERE id = $1", [id]);
-    if (result.rows.length === 0)
-      return res.status(404).json({ error: "Cliente não encontrado" });
-    res.json(result.rows[0]);
-  } catch (error) {
-    console.error("Erro ao buscar cliente:", error);
-    res.status(500).json({ error: "Erro ao buscar cliente" });
+    const { id } = req.params;
+    const db = conectarBD();
+    const resultado = await db.query("SELECT * FROM Clientes WHERE id = $1", [id]);
+
+    if (resultado.rows.length === 0) {
+      return res.status(404).json({ mensagem: "Cliente não encontrado" });
+    }
+
+    res.json(resultado.rows[0]);
+  } catch (e) {
+    console.error("Erro ao buscar cliente:", e);
+    res.status(500).json({ erro: "Erro interno ao buscar cliente" });
   }
 });
 
-// POST - Adicionar novo cliente
+// POST criar cliente
 app.post("/clientes", async (req, res) => {
-  const { nome, email } = req.body;
-
-  if (!nome || !email) {
-    return res.status(400).json({ error: "Preencha todos os campos!" });
-  }
-
   try {
-    const result = await pool.query(
+    const { nome, email } = req.body;
+
+    if (!nome || !email) {
+      return res.status(400).json({ erro: "Preencha todos os campos!" });
+    }
+
+    const db = conectarBD();
+    const resultado = await db.query(
       "INSERT INTO Clientes (nome, email) VALUES ($1, $2) RETURNING *",
       [nome, email]
     );
-    res.status(201).json(result.rows[0]);
-  } catch (error) {
-    console.error("Erro ao adicionar cliente:", error);
-    res.status(500).json({ error: "Erro ao adicionar cliente" });
+
+    res.status(201).json(resultado.rows[0]);
+  } catch (e) {
+    console.error("Erro ao adicionar cliente:", e);
+    res.status(500).json({ erro: "Erro ao adicionar cliente" });
   }
 });
 
-// PUT - Atualizar cliente
+// PUT atualizar cliente
 app.put("/clientes/:id", async (req, res) => {
-  const { id } = req.params;
-  const { nome, email } = req.body;
-
   try {
-    const result = await pool.query(
+    const { id } = req.params;
+    const { nome, email } = req.body;
+
+    const db = conectarBD();
+    const existente = await db.query("SELECT * FROM Clientes WHERE id = $1", [id]);
+
+    if (existente.rows.length === 0) {
+      return res.status(404).json({ mensagem: "Cliente não encontrado" });
+    }
+
+    const novoNome = nome || existente.rows[0].nome;
+    const novoEmail = email || existente.rows[0].email;
+
+    const resultado = await db.query(
       "UPDATE Clientes SET nome = $1, email = $2 WHERE id = $3 RETURNING *",
-      [nome, email, id]
+      [novoNome, novoEmail, id]
     );
 
-    if (result.rows.length === 0)
-      return res.status(404).json({ error: "Cliente não encontrado" });
-
-    res.json(result.rows[0]);
-  } catch (error) {
-    console.error("Erro ao atualizar cliente:", error);
-    res.status(500).json({ error: "Erro ao atualizar cliente" });
+    res.json(resultado.rows[0]);
+  } catch (e) {
+    console.error("Erro ao atualizar cliente:", e);
+    res.status(500).json({ erro: "Erro ao atualizar cliente" });
   }
 });
 
-// DELETE - Deletar cliente
+// DELETE cliente
 app.delete("/clientes/:id", async (req, res) => {
-  const { id } = req.params;
-
   try {
-    const result = await pool.query(
+    const { id } = req.params;
+    const db = conectarBD();
+
+    const resultado = await db.query(
       "DELETE FROM Clientes WHERE id = $1 RETURNING *",
       [id]
     );
 
-    if (result.rows.length === 0)
-      return res.status(404).json({ error: "Cliente não encontrado" });
+    if (resultado.rows.length === 0) {
+      return res.status(404).json({ mensagem: "Cliente não encontrado" });
+    }
 
-    res.json({ message: "Cliente deletado com sucesso!" });
-  } catch (error) {
-    console.error("Erro ao deletar cliente:", error);
-    res.status(500).json({ error: "Erro ao deletar cliente" });
+    res.json({ mensagem: "Cliente excluído com sucesso" });
+  } catch (e) {
+    console.error("Erro ao excluir cliente:", e);
+    res.status(500).json({ erro: "Erro ao excluir cliente" });
   }
 });
 
