@@ -181,6 +181,95 @@ app.put("/questoes/:id", async (req, res) => {
   }
 });
 
+// === CLIENTES ===
+
+// GET - Listar todos os clientes
+app.get("/clientes", async (req, res) => {
+  try {
+    const result = await pool.query("SELECT * FROM Clientes ORDER BY id ASC");
+    res.json(result.rows);
+  } catch (error) {
+    console.error("Erro ao buscar clientes:", error);
+    res.status(500).json({ error: "Erro ao buscar clientes" });
+  }
+});
+
+// GET - Buscar cliente por ID
+app.get("/clientes/:id", async (req, res) => {
+  const { id } = req.params;
+  try {
+    const result = await pool.query("SELECT * FROM Clientes WHERE id = $1", [id]);
+    if (result.rows.length === 0)
+      return res.status(404).json({ error: "Cliente não encontrado" });
+    res.json(result.rows[0]);
+  } catch (error) {
+    console.error("Erro ao buscar cliente:", error);
+    res.status(500).json({ error: "Erro ao buscar cliente" });
+  }
+});
+
+// POST - Adicionar novo cliente
+app.post("/clientes", async (req, res) => {
+  const { nome, email } = req.body;
+
+  if (!nome || !email) {
+    return res.status(400).json({ error: "Preencha todos os campos!" });
+  }
+
+  try {
+    const result = await pool.query(
+      "INSERT INTO Clientes (nome, email) VALUES ($1, $2) RETURNING *",
+      [nome, email]
+    );
+    res.status(201).json(result.rows[0]);
+  } catch (error) {
+    console.error("Erro ao adicionar cliente:", error);
+    res.status(500).json({ error: "Erro ao adicionar cliente" });
+  }
+});
+
+// PUT - Atualizar cliente
+app.put("/clientes/:id", async (req, res) => {
+  const { id } = req.params;
+  const { nome, email } = req.body;
+
+  try {
+    const result = await pool.query(
+      "UPDATE Clientes SET nome = $1, email = $2 WHERE id = $3 RETURNING *",
+      [nome, email, id]
+    );
+
+    if (result.rows.length === 0)
+      return res.status(404).json({ error: "Cliente não encontrado" });
+
+    res.json(result.rows[0]);
+  } catch (error) {
+    console.error("Erro ao atualizar cliente:", error);
+    res.status(500).json({ error: "Erro ao atualizar cliente" });
+  }
+});
+
+// DELETE - Deletar cliente
+app.delete("/clientes/:id", async (req, res) => {
+  const { id } = req.params;
+
+  try {
+    const result = await pool.query(
+      "DELETE FROM Clientes WHERE id = $1 RETURNING *",
+      [id]
+    );
+
+    if (result.rows.length === 0)
+      return res.status(404).json({ error: "Cliente não encontrado" });
+
+    res.json({ message: "Cliente deletado com sucesso!" });
+  } catch (error) {
+    console.error("Erro ao deletar cliente:", error);
+    res.status(500).json({ error: "Erro ao deletar cliente" });
+  }
+});
+
+
 
 app.listen(port, () => {            // Um socket para "escutar" as requisições
   console.log(`Serviço rodando na porta:  ${port}`);
