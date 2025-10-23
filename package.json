@@ -1,11 +1,11 @@
 {
-  "name": "nome-sua-api",
+  "name": "Api para Trabalhosver",
   "version": "1.0.0",
-  "description": "descrição sua API",
+  "description": "EU",
   "main": "server.js",
   "scripts": {},
   "keywords": [],
-  "author": "Seu Nome Completo",
+  "author": "Caio Augusto",
   "license": "ISC",
   "type": "module",
   "dependencies": {
