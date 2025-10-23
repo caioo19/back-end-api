@@ -1,14 +1,25 @@
-import express from "express";
-import pkg from "pg";
-import dotenv from "dotenv";
+// ######
+// Local onde os pacotes de dependências serão importados
+// ######
+import express from "express"; // Requisição do pacote do express
+import pkg from "pg"; // Requisição do pacote do pg (PostgreSQL)
+import dotenv from "dotenv"; // Importa o pacote dotenv para carregar variáveis de ambiente
 
-dotenv.config();
+// ######
+// Local onde as configurações do servidor serão feitas
+// ######
+const app = express(); // Inicializa o servidor Express
+const port = 3000; // Define a porta onde o servidor irá escutar
+dotenv.config(); // Carrega as variáveis de ambiente do arquivo .env
+const { Pool } = pkg; // Obtém o construtor Pool do pacote pg para gerenciar conexões com o banco de dados PostgreSQL
+let pool = null; // Variável para armazenar o pool de conexões com o banco de dados
 
-const { Pool } = pkg;
-const app = express();
-const port = 3000;
-
-let pool = null;
+//server.js - configuração do servidor
+app.use(express.json()); // Middleware para interpretar requisições com corpo em JSON
+-
+// ######
+// Local onde funções serão definidas
+// ######
 
 function conectarBD() {
   if (!pool) {
@@ -19,41 +30,144 @@ function conectarBD() {
   return pool;
 }
 
-const db = conectarBD();
-
-let dbStatus = "ok";
-try {
-  await db.query("SELECT 1");
-  console.log("Conexão com o banco de dados estabelecida com sucesso!");
-} catch (e) {
-  dbStatus = e.message;
-  console.error("Erro na conexão com o banco de dados:", dbStatus);
-}
-
-app.get("/", async (req, res) => {
-  console.log("Rota GET / solicitada");
-  res.json({
-    message: "API para atividade",
-    author: "Daniely dos Santos Silva",
-    statusBD: dbStatus,
-  });
-});
+// ######
+// Local onde as rotas (endpoints) serão definidas
+// ######
 
 app.get("/questoes", async (req, res) => {
-  console.log("Rota GET /questoes solicitada");
+
+  const db = conectarBD();
+
   try {
-    const resultado = await db.query("SELECT * FROM questoes");
-    const dados = resultado.rows;
-    res.json(dados);
+    const resultado = await db.query("SELECT * FROM questoes"); // Executa uma consulta SQL para selecionar todas as questões
+    const dados = resultado.rows; // Obtém as linhas retornadas pela consulta
+    res.json(dados); // Retorna o resultado da consulta como JSON
   } catch (e) {
-    console.error("Erro ao buscar questões:", e);
+    console.error("Erro ao buscar questões:", e); // Log do erro no servidor
     res.status(500).json({
-      erro: "Erro interno do servidor",
-      mensagem: "Não foi possível buscar as questões",
+      erro: "Erro interno do servidor"
     });
   }
 });
 
+app.get("/", async (req, res) => {
+  // Rota raiz do servidor
+  // Rota GET /
+  // Esta rota é chamada quando o usuário acessa a raiz do servidor
+  // Ela retorna uma mensagem de boas-vindas e o status da conexão com o banco de dados
+  // Cria a rota da raiz do projeto
+
+  console.log("Rota GET / solicitada"); // Log no terminal para indicar que a rota foi acessada
+
+
+  const db = conectarBD();
+
+  let dbStatus = "ok";
+
+  // Tenta executar uma consulta simples para verificar a conexão com o banco de dados
+  // Se a consulta falhar, captura o erro e define o status do banco de dados como a mensagem de erro
+  try {
+    await db.query("SELECT 1");
+  } catch (e) {
+    dbStatus = e.message;
+  }
+
+  // Responde com um JSON contendo uma mensagem, o nome do autor e o status da conexão com o banco de dados
+  res.json({
+    mensagem: "API para Questões de Prova", // Substitua pelo conteúdo da sua API
+    autor: "Arthur Porto", // Substitua pelo seu nome
+    dbStatus: dbStatus,
+  });
+});
+
+//server.js
+app.get("/questoes/:id", async (req, res) => {
+  console.log("Rota GET /questoes/:id solicitada"); // Log no terminal para indicar que a rota foi acessada
+
+  try {
+    const id = req.params.id; // Obtém o ID da questão a partir dos parâmetros da URL
+    const db = conectarBD(); // Conecta ao banco de dados
+    const consulta = "SELECT * FROM questoes WHERE id = $1"; // Consulta SQL para selecionar a questão pelo ID
+    const resultado = await db.query(consulta, [id]); // Executa a consulta SQL com o ID fornecido
+    const dados = resultado.rows; // Obtém as linhas retornadas pela consulta
+
+    // Verifica se a questão foi encontrada
+    if (dados.length === 0) {
+      return res.status(404).json({ mensagem: "Questão não encontrada" }); // Retorna erro 404 se a questão não for encontrada
+    }
+
+    res.json(dados); // Retorna o resultado da consulta como JSON
+  } catch (e) {
+    console.error("Erro ao buscar questão:", e); // Log do erro no servidor
+    res.status(500).json({
+      erro: "Erro interno do servidor"
+    });
+  }
+});
+
+//server.js
+app.delete("/questoes/:id", async (req, res) => {
+  console.log("Rota DELETE /questoes/:id solicitada"); // Log no terminal para indicar que a rota foi acessada
+
+  try {
+    const id = req.params.id; // Obtém o ID da questão a partir dos parâmetros da URL
+    const db = conectarBD(); // Conecta ao banco de dados
+    let consulta = "SELECT * FROM questoes WHERE id = $1"; // Consulta SQL para selecionar a questão pelo ID
+    let resultado = await db.query(consulta, [id]); // Executa a consulta SQL com o ID fornecido
+    let dados = resultado.rows; // Obtém as linhas retornadas pela consulta
+
+    // Verifica se a questão foi encontrada
+    if (dados.length === 0) {
+      return res.status(404).json({ mensagem: "Questão não encontrada" }); // Retorna erro 404 se a questão não for encontrada
+    }
+
+    consulta = "DELETE FROM questoes WHERE id = $1"; // Consulta SQL para deletar a questão pelo ID
+    resultado = await db.query(consulta, [id]); // Executa a consulta SQL com o ID fornecido
+    res.status(200).json({ mensagem: "Questão excluida com sucesso!!" }); // Retorna o resultado da consulta como JSON
+  } catch (e) {
+    console.error("Erro ao excluir questão:", e); // Log do erro no servidor
+    res.status(500).json({
+      erro: "Erro interno do servidor"
+    });
+  }
+});
+
+//server.js
+app.post("/questoes", async (req, res) => {
+  console.log("Rota POST /questoes solicitada"); // Log no terminal para indicar que a rota foi acessada
+
+  try {
+    const data = req.body; // Obtém os dados do corpo da requisição
+    // Validação dos dados recebidos
+    if (!data.enunciado || !data.disciplina || !data.tema || !data.nivel) {
+      return res.status(400).json({
+        erro: "Dados inválidos",
+        mensagem:
+          "Todos os campos (enunciado, disciplina, tema, nivel) são obrigatórios.",
+      });
+    }
+
+    const db = conectarBD(); // Conecta ao banco de dados
+
+    const consulta =
+      "INSERT INTO questoes (enunciado,disciplina,tema,nivel) VALUES ($1,$2,$3,$4) "; // Consulta SQL para inserir a questão
+    const questao = [data.enunciado, data.disciplina, data.tema, data.nivel]; // Array com os valores a serem inseridos
+    const resultado = await db.query(consulta, questao); // Executa a consulta SQL com os valores fornecidos
+    res.status(201).json({ mensagem: "Questão criada com sucesso!" }); // Retorna o resultado da consulta como JSON
+  } catch (e) {
+    console.error("Erro ao inserir questão:", e); // Log do erro no servidor
+    res.status(500).json({
+      erro: "Erro interno do servidor"
+    });
+  }
+});
+
+
+// ######
+// Local onde o servidor irá escutar as requisições
+// ######
 app.listen(port, () => {
-  console.log(`Serviço rodando na porta: ${port}`);
+  // Inicia o servidor na porta definida
+  // Um socket para "escutar" as requisições
+  console.log(`Serviço rodando na porta:  ${port}`);
 });
